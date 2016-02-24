@@ -1,126 +1,138 @@
-//verification webgl
+//Détection des facultés WebGl du browser
 if ( ! Detector.webgl ) {
 
     Detector.addGetWebGLMessage();
     document.getElementById( 'container' ).innerHTML = "";
 }
+//Déclaration des variables standards
+//-----------------------------------
+var container; //Elément conteneur du DOM
+var camera, controls, scene, renderer; 
+//var controls;//Contrôle de l'affichage
+//var renderer;//Renderer WebGL
+var cube, group;
 
-var container;
-var scene, camera, renderer;
-var geometry, material, cube;
-
-
-var wAng = 1; //omega
-var keys = { left:0, right:0, up:0, down:0 };
+var n = 10; //n+1 partitions ! 
 
 init();
+animate();
 
 
 function init(){
-    container = document.getElementById( 'container' );
-    
-    //creation de la scene
-    scene = new THREE.Scene();
 
-    //initialasion de la camera
-    camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
-    camera.position.set(5,5,5);
-    camera.lookAt(scene.position);
+    camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 10000 );
+    camera.position.set(2,2,2);
+
+    controls = new THREE.TrackballControls( camera );
+
+    controls.rotateSpeed = 1.0;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 0.8;
+
+    controls.noZoom = false;
+    controls.noPan = false;
+
+    controls.staticMoving = true;
+    controls.dynamicDampingFactor = 0.3;
+
+    controls.addEventListener( 'change', render );
+
+    // world
+    scene = new THREE.Scene();
     
+    var geometry = new THREE.BoxGeometry( 1/n, 1/n, 1/n );
+   
+    group = new THREE.Group();
+
+    for ( var i = 0; i < 1; i += 1/n ) {
+        for ( var j = 0; j < 1; j += 1/n ) {
+            for ( var k = 0; k < 1; k += 1/n ) {
+
+                var r = (i*255); 
+                x=parseInt(r);
+                //console.log(r);
+                var g = (j*255);
+                y=parseInt(g);
+                var b = (k*255); 
+                z=parseInt(b);
+
+                var material = new THREE.MeshBasicMaterial({ color: "rgb("+x+", "+y+", "+z+")" });
+
+                var cube = new THREE.Mesh( geometry, material );
+                cube.position.x = i;
+                cube.position.y = j;
+                cube.position.z = k;
+               
+                cube.matrixAutoUpdate = false;
+                cube.updateMatrix();
+
+                group.add( cube );
+            }//k   
+        }//j
+    }//i
+   
+    scene.add( group );
+
     //creation axes
-    var axisHelper = new THREE.AxisHelper(100);
+    var axisHelper = new THREE.AxisHelper(500);
+    axisHelper.position.set(-1/(2*n),-1/(2*n),-1/(2*n)); //on se positionne au sommet noir du cube 
     scene.add(axisHelper);
 
-    //creation eclairage 
-    var pointLight = new THREE.PointLight( 0xffffff);
-    pointLight.position.set(60,60,60);
-    scene.add(pointLight);
 
-    var spotLight = new THREE.SpotLight( 0xffffff);
-    spotLight.position.set(-300,0,0);
-    scene.add(spotLight);
+    //  Sol de la scène
+    //-----------------                
+    var floorGeometry = new THREE.PlaneGeometry(1000, 1000); //géométrie du sol
+    var floorTexture = new THREE.ImageUtils.loadTexture('texture/herbe.png');
+    floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping; 
+    floorTexture.repeat.set( 100, 100 );
+    var floorMaterial = new THREE.MeshBasicMaterial({map: floorTexture}); //materiau du sol
+    var floor = new THREE.Mesh(floorGeometry, floorMaterial); //association de la géométrie et du matériau
+    floor.position.set( 0, -1/(2*n), 0 ); //positionnement
+    floor.rotation.x = -Math.PI/2; //sol horizontal (!)
+    scene.add(floor); //attachement du sol à la scène
 
-    //introduction variable temporelle
-    var chrono = new THREE.Clock();
-    chrono.start();
-    //temps = chrono.getElapsedTime();
-    temps = chrono.getDelta();
 
-    //creation de l'objet
-    geometry = new THREE.BoxGeometry( 1, 1, 1 );
-    
-    material = new THREE.MeshPhongMaterial( { color: 0x00ff00 } );//vert
-    cube = new THREE.Mesh( geometry, material );
-    cube.position.set(0,0,0);
-
-    material2 = new THREE.MeshBasicMaterial( { color: 0x0033CC } ); //bleu
-    cube2 = new THREE.Mesh( geometry, material2 );
-    cube2.position.set(1,0,0);
-
-    scene.add( cube,cube2 );
-
-    // initialisation du rendu
-    renderer = new THREE.WebGLRenderer();
+    // renderer
+    renderer = new THREE.WebGLRenderer( { antialias: false } );
+    renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize( window.innerWidth, window.innerHeight );
-    document.body.appendChild( renderer.domElement );
+
+
+
+
+    container = document.getElementById( 'container' );
+    container.appendChild( renderer.domElement );
+
+    //
+    window.addEventListener( 'resize', onWindowResize, false );
+    //
+
+    render();
 }
 
-//
 
-window.addEventListener('keydown',function(event){
-    if (event.keyCode == 37){
-        keys.left = 1;
-    } else if (event.keyCode == 39) {
-        keys.right = 1;
-    } else if (event.keyCode == 38) {
-        keys.up = 1;
-    } else if (event.keyCode == 40) {
-    keys.down = 1;
-    }
-});
+function onWindowResize() {
+    //on s'adapte a la taille de l'ecran
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
 
-window.addEventListener('keyup',function(event){
-    if (event.keyCode == 37){
-        keys.left = 0;
-    } else if (event.keyCode == 39) {
-        keys.right = 0;
-    } else if (event.keyCode == 38) {
-        keys.up = 0;
-    } else if (event.keyCode == 40) {
-    keys.down = 0;
-    }
-});
+    renderer.setSize( window.innerWidth, window.innerHeight );
 
-//
+    controls.handleResize();
+
+    render();
+
+}
 
 function animate(){
-    temps += 1/60;
-    if (keys.left == 1) {
-        //cube.rotation.y = -wAng * temps; 
-        camera.position.x = 5 * Math.sin(-wAng * temps);
-        camera.position.z = 5 * Math.cos(-wAng * temps);
-
-    }
-    if (keys.right == 1) {
-        //cube.rotation.y = wAng * temps; 
-        camera.position.x = 5 * Math.sin(wAng * temps);
-        camera.position.z = 5 * Math.cos(wAng * temps);
-    }
-
-    
-
-    //camera.position.x = 5 * Math.sin(wAng * temps);
-    //camera.position.z = 5 * Math.cos(wAng * temps);
-    camera.lookAt(scene.position);
-
+    requestAnimationFrame( animate );
+    controls.update();
 }
 
 function render() {
-    requestAnimationFrame( render );
-    animate();
     renderer.render( scene, camera );
 }
 
-render();
+
 
 
