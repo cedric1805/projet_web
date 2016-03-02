@@ -1,9 +1,10 @@
 //Détection des facultés WebGl du browser
-if ( ! Detector.webgl ) {
+/*if ( ! Detector.webgl ) {
 
     Detector.addGetWebGLMessage();
     document.getElementById( 'container' ).innerHTML = "";
-}
+}*/
+if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 //Déclaration des variables standards
 //-----------------------------------
 var container; //Elément conteneur du DOM
@@ -12,13 +13,46 @@ var camera, controls, scene, renderer;
 //var renderer;//Renderer WebGL
 var cube, group;
 
-var n = 10; //n+1 partitions ! 
+var n = 10; //n+1 partitions !
+
+
+
+
+
+function change(toto) {
+    console.log(toto);
+    
+    creation_world(toto);
+
+
+    return false;
+}
+
+
+
+var options = '';
+for (var i = 1; i < 6; i++) {
+    var j = 5*i;
+    //<a href="#" lien interne, protocol HTTP
+    options += '<a href="#" onclick="return change(' + j + ')">' + j + '</a> ';
+}
+document.getElementById('options').innerHTML = options;
+
+
+
+
+
+
 
 init();
-animate();
-
+animate(); 
 
 function init(){
+
+     
+
+    container = document.createElement( 'div' );
+    document.body.appendChild( container );
 
     camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 10000 );
     camera.position.set(2,2,2);
@@ -38,8 +72,11 @@ function init(){
     controls.addEventListener( 'change', render );
 
     // world
+
     scene = new THREE.Scene();
-    
+    creation_world(n);
+
+    /*
     var geometry = new THREE.BoxGeometry( 1/n, 1/n, 1/n );
    
     group = new THREE.Group();
@@ -70,6 +107,7 @@ function init(){
             }//k   
         }//j
     }//i
+
    
     scene.add( group );
 
@@ -92,15 +130,17 @@ function init(){
     scene.add(floor); //attachement du sol à la scène
 
 
+
+    */
+    
+
+
+
     // renderer
     renderer = new THREE.WebGLRenderer( { antialias: false } );
     renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize( window.innerWidth, window.innerHeight );
 
-
-
-
-    container = document.getElementById( 'container' );
     container.appendChild( renderer.domElement );
 
     //
@@ -135,4 +175,58 @@ function render() {
 
 
 
+function creation_world(n){
+        var geometry = new THREE.BoxGeometry( 1/n, 1/n, 1/n );
+       
+        group = new THREE.Group();
 
+        for ( var i = 0; i < 1; i += 1/n ) {
+            for ( var j = 0; j < 1; j += 1/n ) {
+                for ( var k = 0; k < 1; k += 1/n ) {
+
+                    var r = (i*255); 
+                    x=parseInt(r);
+                    //console.log(r);
+                    var g = (j*255);
+                    y=parseInt(g);
+                    var b = (k*255); 
+                    z=parseInt(b);
+
+                    var material = new THREE.MeshBasicMaterial({ color: "rgb("+x+", "+y+", "+z+")" });
+
+                    var cube = new THREE.Mesh( geometry, material );
+                    cube.position.x = i;
+                    cube.position.y = j;
+                    cube.position.z = k;
+                   
+                    cube.matrixAutoUpdate = false;
+                    cube.updateMatrix();
+
+                    group.add( cube );
+                }//k   
+            }//j
+        }//i
+       
+        scene.add( group );
+
+        //creation axes
+        var axisHelper = new THREE.AxisHelper(500);
+        axisHelper.position.set(-1/(2*n),-1/(2*n),-1/(2*n)); //on se positionne au sommet noir du cube 
+        scene.add(axisHelper);
+
+
+        //  Sol de la scène
+        //-----------------                
+        var floorGeometry = new THREE.PlaneGeometry(1000, 1000); //géométrie du sol
+        var floorTexture = new THREE.ImageUtils.loadTexture('texture/herbe.png');
+        floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping; 
+        floorTexture.repeat.set( 100, 100 );
+        var floorMaterial = new THREE.MeshBasicMaterial({map: floorTexture}); //materiau du sol
+        var floor = new THREE.Mesh(floorGeometry, floorMaterial); //association de la géométrie et du matériau
+        floor.position.set( 0, -1/(2*n), 0 ); //positionnement
+        floor.rotation.x = -Math.PI/2; //sol horizontal (!)
+        scene.add(floor); //attachement du sol à la scène
+
+
+
+    }
