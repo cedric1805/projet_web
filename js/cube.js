@@ -1,9 +1,4 @@
 //Détection des facultés WebGl du browser
-/*if ( ! Detector.webgl ) {
-
-    Detector.addGetWebGLMessage();
-    document.getElementById( 'container' ).innerHTML = "";
-}*/
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 //Déclaration des variables standards
 //-----------------------------------
@@ -13,18 +8,20 @@ var camera, controls, scene, renderer;
 //var renderer;//Renderer WebGL
 var cube, group;
 
+var axisHelper;
+var floor;
+
 var n = 10; //n+1 partitions !
 
 
 
 
 
-function change(toto) {
-    console.log(toto);
-    
-    creation_world(toto);
+function change(n) {
+    //on supprime la scene courante
+    scene.remove(group); // le groupe contenant les cubes et les axes
 
-
+    creation_cubeRVB(n); //on cree le cube avec n partitions et ses axes
     return false;
 }
 
@@ -34,7 +31,7 @@ var options = '';
 for (var i = 1; i < 6; i++) {
     var j = 5*i;
     //<a href="#" lien interne, protocol HTTP
-    options += '<a href="#" onclick="return change(' + j + ')">' + j + '</a> ';
+    options += '<a href="#" onclick="return change(' + j + ')">' + j + '</a> '; //on appelle la fonction change() pour le n selectionne
 }
 document.getElementById('options').innerHTML = options;
 
@@ -48,9 +45,7 @@ init();
 animate(); 
 
 function init(){
-
-     
-
+   
     container = document.createElement( 'div' );
     document.body.appendChild( container );
 
@@ -74,66 +69,9 @@ function init(){
     // world
 
     scene = new THREE.Scene();
-    creation_world(n);
-
-    /*
-    var geometry = new THREE.BoxGeometry( 1/n, 1/n, 1/n );
-   
-    group = new THREE.Group();
-
-    for ( var i = 0; i < 1; i += 1/n ) {
-        for ( var j = 0; j < 1; j += 1/n ) {
-            for ( var k = 0; k < 1; k += 1/n ) {
-
-                var r = (i*255); 
-                x=parseInt(r);
-                //console.log(r);
-                var g = (j*255);
-                y=parseInt(g);
-                var b = (k*255); 
-                z=parseInt(b);
-
-                var material = new THREE.MeshBasicMaterial({ color: "rgb("+x+", "+y+", "+z+")" });
-
-                var cube = new THREE.Mesh( geometry, material );
-                cube.position.x = i;
-                cube.position.y = j;
-                cube.position.z = k;
-               
-                cube.matrixAutoUpdate = false;
-                cube.updateMatrix();
-
-                group.add( cube );
-            }//k   
-        }//j
-    }//i
-
-   
-    scene.add( group );
-
-    //creation axes
-    var axisHelper = new THREE.AxisHelper(500);
-    axisHelper.position.set(-1/(2*n),-1/(2*n),-1/(2*n)); //on se positionne au sommet noir du cube 
-    scene.add(axisHelper);
-
-
-    //  Sol de la scène
-    //-----------------                
-    var floorGeometry = new THREE.PlaneGeometry(1000, 1000); //géométrie du sol
-    var floorTexture = new THREE.ImageUtils.loadTexture('texture/herbe.png');
-    floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping; 
-    floorTexture.repeat.set( 100, 100 );
-    var floorMaterial = new THREE.MeshBasicMaterial({map: floorTexture}); //materiau du sol
-    var floor = new THREE.Mesh(floorGeometry, floorMaterial); //association de la géométrie et du matériau
-    floor.position.set( 0, -1/(2*n), 0 ); //positionnement
-    floor.rotation.x = -Math.PI/2; //sol horizontal (!)
-    scene.add(floor); //attachement du sol à la scène
-
-
-
-    */
+    creation_cubeRVB(n);
+    //creation_sol();
     
-
 
 
     // renderer
@@ -175,21 +113,24 @@ function render() {
 
 
 
-function creation_world(n){
+function creation_cubeRVB(n){
+        //on cherche a creer un cube de taille 1 avec n x n x n partitions de cube 
+        //creation du cube de base
         var geometry = new THREE.BoxGeometry( 1/n, 1/n, 1/n );
        
+        //on va ajouter n x n x n cubes de tailles 1/n
         group = new THREE.Group();
 
-        for ( var i = 0; i < 1; i += 1/n ) {
-            for ( var j = 0; j < 1; j += 1/n ) {
-                for ( var k = 0; k < 1; k += 1/n ) {
-
-                    var r = (i*255); 
+        for ( var i = 0; i <= 1; i += 1/n ) {
+            for ( var j = 0; j <= 1; j += 1/n ) {
+                for ( var k = 0; k <= 1; k += 1/n ) {
+                    // le cube RVB est code sur 3 canaux dont chacun varie de 0 a 255
+                    var r = (i*255);  //canal rouge
                     x=parseInt(r);
                     //console.log(r);
-                    var g = (j*255);
+                    var g = (j*255); // canal vert 
                     y=parseInt(g);
-                    var b = (k*255); 
+                    var b = (k*255);  //canal bleu
                     z=parseInt(b);
 
                     var material = new THREE.MeshBasicMaterial({ color: "rgb("+x+", "+y+", "+z+")" });
@@ -206,27 +147,43 @@ function creation_world(n){
                 }//k   
             }//j
         }//i
+
+        
+        creation_axe(n); // on rajoute les axes
+        
+        
        
         scene.add( group );
 
-        //creation axes
-        var axisHelper = new THREE.AxisHelper(500);
-        axisHelper.position.set(-1/(2*n),-1/(2*n),-1/(2*n)); //on se positionne au sommet noir du cube 
-        scene.add(axisHelper);
+}
+
+function creation_axe(n){
+    //creation axes
+    var axisHelper = new THREE.AxisHelper(500);
+    var decal = -1/(2*n);
+    //console.log(decal);
+    axisHelper.position.set(decal,decal,decal); //on se positionne au sommet noir du cube 
+    group.add( axisHelper ); // on ajoute les axes sur le groupe 
+}
 
 
+
+function creation_sol(){
         //  Sol de la scène
-        //-----------------                
-        var floorGeometry = new THREE.PlaneGeometry(1000, 1000); //géométrie du sol
-        var floorTexture = new THREE.ImageUtils.loadTexture('texture/herbe.png');
-        floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping; 
-        floorTexture.repeat.set( 100, 100 );
-        var floorMaterial = new THREE.MeshBasicMaterial({map: floorTexture}); //materiau du sol
-        var floor = new THREE.Mesh(floorGeometry, floorMaterial); //association de la géométrie et du matériau
-        floor.position.set( 0, -1/(2*n), 0 ); //positionnement
-        floor.rotation.x = -Math.PI/2; //sol horizontal (!)
-        scene.add(floor); //attachement du sol à la scène
+    //-----------------                
+    var floorGeometry = new THREE.PlaneGeometry(1000, 1000); //géométrie du sol
+    var floorTexture = new THREE.ImageUtils.loadTexture('texture/herbe.png');
+    floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping; 
+    floorTexture.repeat.set( 100, 100 );
+    var floorMaterial = new THREE.MeshBasicMaterial({map: floorTexture}); //materiau du sol
+    var floor = new THREE.Mesh(floorGeometry, floorMaterial); //association de la géométrie et du matériau
+    floor.position.set( 0, -1, 0 ); //positionnement
+    floor.rotation.x = -Math.PI/2; //sol horizontal (!)
+    scene.add(floor); //attachement du sol à la scène
+}
 
 
 
-    }
+
+
+    
