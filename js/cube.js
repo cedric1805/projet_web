@@ -54,25 +54,32 @@ var textureCube = null;
 var shader = null;
 var skyboxMaterial = null;
 var skybox = null;
-//setupGui
-var parametres = null;
-var gui = null;
-var folder1 = null;
-var folder2 = null;
-var folder3 = null;
-var coupeX = null;
-var coupeY = null;
-var coupeZ = null;
+var nbre_partitions = null;
 
 //creation cube
 var geometry = null;
-var group = null;
-var material = null; 
-var cube = null;
-var n = 5; 
+var group = false;
+//var material = null; 
+var cubes = null;
+var n = 4; 
 //creation axes
 var axisHelper = null;
 var decal = null;
+//setupGui
+var parametres = {
+
+    nbre_partitions : 5,
+
+    x : 1,
+    y : 1,
+    z : 1,
+
+    decoupe_sur_axe_X: 5,
+    decoupe_sur_axe_Y: 5,
+    decoupe_sur_axe_Z: 5,
+
+    sky : false,
+};
 
 
 
@@ -178,38 +185,31 @@ function onWindowResize() {
 
 function setupGui() {
 
-    parametres = {
-
-        nbre_partitions : 5,
-
-        x : 3,
-        y : 3,
-        z : 3,
-
-        decoupe_sur_axe_X: 5,
-        decoupe_sur_axe_Y: 5,
-        decoupe_sur_axe_Z: 5,
-
-        sky : false,
-    };
+    parametres
 
 
-    gui = new dat.GUI();
+    var gui = new dat.GUI();
 
     // Nombre de partitions
-    folder1 = gui.addFolder( "Nombre de partitions" );
-    folder1.add( parametres, "nbre_partitions", [ 5, 10, 15, 20, 25] ).name( "Nbre de partitions" ).onChange( render );
+    var folder1 = gui.addFolder( "Nombre de partitions" );
+    nbre_partitions = folder1.add( parametres, "nbre_partitions", [ 5, 10, 15, 20, 25] ).name( "Nbre de partitions" ).onChange(function() {
+        n = parametres.nbre_partitions - 1;
+        creation_cubeRVB();
+        render();
+    });
 
     // Plans de decoupe
-    folder2 = gui.addFolder("Plans de découpe");
-    coupeX = folder2.add( parametres, 'x' ).min(0).max(5).step(1).listen();
-    coupeY = folder2.add( parametres, 'y' ).min(0).max(5).step(1).listen();
-    coupeZ = folder2.add( parametres, 'z' ).min(0).max(5).step(1).listen();
+    var folder2 = gui.addFolder("Plans de découpe");
+    folder2.add( parametres, 'x' ).min(0).max(1).step(0.01).listen().onChange(render);
+    folder2.add( parametres, 'y' ).min(0).max(1).step(0.01).listen().onChange(render);
+    folder2.add( parametres, 'z' ).min(0).max(1).step(0.01).listen().onChange(render);
     folder2.open();
       
     // Environnement 
-    folder3 = gui.addFolder( "Environnement" );
+    var folder3 = gui.addFolder( "Environnement" );
     folder3.add( parametres, "sky" ).onChange( render );
+
+    creation_cubeRVB(nbre_partitions.getValue()); //on cree le cube avec n partitions et ses axes
 
 }
 
@@ -217,16 +217,7 @@ function render() {
     //gestion de l'onglet "nombre des partitions"
     //-------------------------------------------
     //on recupere les valeurs du GUI
-    nbre_partitions_cube = parametres.nbre_partitions;
-
-    
-    //scene.remove(this.cube.position.x = 0);
-    //gestion de l'onglet "plans de decoupe"
-    //--------------------------------------
-    coupeX.onChange(function(value) {
-        console.log(value);
-        //coupe_plane();
-    })
+    console.log('render');
 
     
     //gestion de l'onglet "environnement"
@@ -246,70 +237,75 @@ function render() {
     
     //on supprime la scene courante
     scene.remove(group); // le groupe contenant les cubes et les axes
-    
-    creation_cubeRVB(nbre_partitions_cube); //on cree le cube avec n partitions et ses axes
-    
+    group = new THREE.Group();
     coupe_plane();
-    // afficher scene
+    creation_axe();
+    scene.add(group);
+    
     renderer.render( scene, camera );
+}
 
-    }
 
-
-function creation_cubeRVB(n){
+function creation_cubeRVB(){
         //on cherche a creer un cube de taille 1 avec n x n x n partitions de cube 
         //creation du cube de base
-        n = n-1; //n+1 partitions !
-        geometry = new THREE.BoxGeometry( 1/n, 1/n, 1/n );
+        var c = 1/n;
+        var geometry = new THREE.BoxGeometry( c,c,c );
        
         //on va ajouter n x n x n cubes de tailles 1/n
+        if (!(group === false)) {scene.remove(group); group = null;}
         group = new THREE.Group();
 
-        for ( var i = 0; i <= 1; i += 1/n ) {
-            for ( var j = 0; j <= 1; j += 1/n ) {
-                for ( var k = 0; k <= 1; k += 1/n ) {
-                    // le cube RVB est code sur 3 canaux dont chacun varie de 0 a 255
-                    var r = (i*255);  //canal rouge
-                    x = parseInt(r);
-                    //console.log(r);
-                    var g = (j*255); // canal vert 
-                    y=parseInt(g);
-                    var b = (k*255);  //canal bleu
-                    z=parseInt(b);
+        cubes = new Array(n+1);
 
-                    material = new THREE.MeshBasicMaterial({ color: "rgb("+x+", "+y+", "+z+")" });
+        for ( var i = 0; i <= n; i++ ) {
 
-                    cube = new THREE.Mesh( geometry, material );
-                    cube.position.x = i;
-                    cube.position.y = j;
-                    cube.position.z = k;
+            var x = parseFloat(i/n);
+            var r = parseInt(x * 255);  //canal rouge
+            cubes[i] = new Array(n+1);
+
+            for ( var j = 0; j <= n; j++ ) {
+
+                var y = parseFloat(j/n);
+                var v = parseInt(y * 255);  //canal vert
+                cubes[i][j] = new Array(n+1);
+
+                for ( var k = 0; k <= n; k++ ) {
+                    // le cube RVB est codé sur 3 canaux dont chacun varie de 0 a 255
+                    var z = parseFloat(k/n);
+                    var b = parseInt(z * 255);  //canal bleu
+
+                    material = new THREE.MeshBasicMaterial({ color: "rgb("+r+", "+v+", "+b+")" });
+
+                    cubes[i][j][k] = new THREE.Mesh(geometry, material );
+                    cubes[i][j][k].position.set(x, y, z);
                    
-                    cube.matrixAutoUpdate = false;
-                    cube.updateMatrix();
-
-
-
-                    group.add( cube );
+                    cubes[i][j][k].matrixAutoUpdate = false;
+                    cubes[i][j][k].updateMatrix();
 
                 }//k   
             }//j
         }//i
-        
-
-        creation_axe(n); // on rajoute les axes
-        scene.add( group );
 }
 
-function creation_axe(n){
+function creation_axe(){
     //creation axes
     axisHelper = new THREE.AxisHelper(500);
     decal = -1/(2*n);
-    //console.log(decal);
     axisHelper.position.set(decal,decal,decal); //on se positionne au sommet noir du cube 
     group.add( axisHelper ); // on ajoute les axes sur le groupe 
 }
 
 
 function coupe_plane(){
-    group.remove(cube.position.x = 0);
+    for ( var i = 0; i <= n; i++ ) {
+        for ( var j = 0; j <= n; j++ ) {
+            for ( var k = 0; k <= n; k++ ) {
+                //console.log(i,j,k);
+                if (cubes[i][j][k].position.x <= parametres.x && cubes[i][j][k].position.y <= parametres.y && cubes[i][j][k].position.z <= parametres.z) {
+                    group.add( cubes[i][j][k] );
+                }
+            }//k   
+        }//j
+    }//i
 }
