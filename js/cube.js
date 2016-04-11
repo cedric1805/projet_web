@@ -17,7 +17,7 @@ chaque cube ayant un diamètre de 1/n. Sa couleur est déterminée par sa place 
 L'utilisateur pourra faire pivoter le cube dans toutes les dimensions. 
 Le cube sera appuyé sur trois axe de coordonnées formant un repère orthonormé, 
 dont le point origine se confond avec le sommet noir du cube. Les trois axes ne sont matérialisés
- qu’à leur sortie du cube, et ils sont uniformément de la couleur du point du cube dont ils se détachent. 
+qu’à leur sortie du cube, et ils sont uniformément de la couleur du point du cube dont ils se détachent. 
 
 Un curseur sur chacun des trois axes permettra de faire glisser un plan de coupe dans le cube.
 Ce plan non matérialisé, ne laissera voir que les petits cubes dont le centre est
@@ -28,9 +28,11 @@ du même côté que l'origine par rapport au plan de coupe.
 //Détection des facultés WebGl du browser
 //---------------------------------------
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+// on fait référence à la biblothèque Detector appelée dans index.html
+// Ceci nous permet de vérifier si l'utilisateur utilise un navigateur adequat 
 
-//Déclaration des variables 
-//-------------------------
+//Déclaration des variables globales
+//----------------------------------
 //environnement
 var container = null; //Elément conteneur du DOM
 var canvasWidth = null;
@@ -59,7 +61,6 @@ var nbre_partitions = null;
 //creation cube
 var geometry = null;
 var group = false;
-//var material = null; 
 var cubes = null;
 var n = 4; 
 //creation axes
@@ -67,17 +68,18 @@ var axisHelper = null;
 var decal = null;
 //setupGui
 var parametres = {
-
+    //pour faciliter le premier chargement
+    // on fixe à 5 le nombre de partition du cube  
     nbre_partitions : 5,
-
+    // le cube etant de coté 1, on fixe donc le max à 1
     x : 1,
     y : 1,
     z : 1,
-
+    //on initialise a une marge de 5 la possibilité de 
     decoupe_sur_axe_X: 5,
     decoupe_sur_axe_Y: 5,
     decoupe_sur_axe_Z: 5,
-
+    // on desactive l'environnement ciel 
     sky : false,
 };
 
@@ -95,38 +97,50 @@ render();
 //Definitions des fonctions 
 //-------------------------
 function init(){
-  
-    container = document.createElement( 'div' );
+    //on crée une div container dans lequel on travaillera en webGL
+    // container est l'élément du DOM auquel la scène WebGL est liée
+    container = document.createElement( 'div' ); 
     document.body.appendChild( container );
-
+    //l'espace de travail s'adapte à l'écran
     var canvasWidth = window.innerWidth;
     var canvasHeight = window.innerHeight;
 
     // CAMERA
-    camera = new THREE.PerspectiveCamera( 60, canvasWidth / canvasHeight, 1, 10000 );
-    camera.position.set(2,2,2);
+    camera = new THREE.PerspectiveCamera( 60, canvasWidth / canvasHeight, 1, 10000 ); 
+    // on fixe la camera à la postion x=2,y=2,z=2. Le repère est relatif et centré au milieu de la div container
+    camera.position.set(2,2,2); 
+
+
 
     // LIGHTS
     ambientLight = new THREE.AmbientLight( 0x333333 );  // 0.2
     light = new THREE.DirectionalLight( 0xFFFFFF, 1.0 );
 
     // RENDERER
-    renderer = new THREE.WebGLRenderer( { antialias: true } );
-    renderer.setClearColor( 0xAAAAAA );
+    renderer = new THREE.WebGLRenderer( { antialias: true } ); // création d'un renderer WebGL renderer
+    renderer.setClearColor( 0xAAAAAA ); //on impose une gris claire par defaut 
     renderer.setPixelRatio( window.devicePixelRatio );
-    renderer.setSize( canvasWidth, canvasHeight );
+    renderer.setSize( canvasWidth, canvasHeight ); // Set the size of the WebGL viewport.
     renderer.gammaInput = true;
     renderer.gammaOutput = true;
-    container.appendChild( renderer.domElement );
+    container.appendChild( renderer.domElement ); // Append the WebGL viewport to the DOM.
 
     // EVENTS
     window.addEventListener( 'resize', onWindowResize, false );
 
     // CONTROLS
-    cameraControls = new THREE.OrbitControls( camera, renderer.domElement );
-    cameraControls.target.set( 0, 0, 0 );
+    // on fait référence à la bibliothèque OrbitControls appelée en index.html
+    // ceci nous permet de déplacer la caméra à l'aide la souris lorsque l'uilisateur clic dans la div container 
+    cameraControls = new THREE.OrbitControls( camera, renderer.domElement ); 
+    cameraControls.target.set( 0, 0, 0 ); // on impose que la camera fixe toujours l'origine du repere,
+                                            // c'est à dire le cube 
     cameraControls.addEventListener( 'change', render );
 
+
+
+    //creation de l'environnement "ciel"
+    //---------------------------------
+    // on integre un cube avec des images de ciel en texture 
     // REFLECTION MAP
     path = "textures/cube/skybox/";
     urls = [
@@ -154,40 +168,44 @@ function init(){
     skybox = new THREE.Mesh( new THREE.BoxGeometry( 5000, 5000, 5000 ), skyboxMaterial );
 
     // skybox scene - keep camera centered here
+    // on crée une nouvellle scene pour que l'affichage de cet environnment soit uniquement un
+    // choix de l'utilisateur 
     sceneCube = new THREE.Scene();
     sceneCube.add( skybox );
 
     // scene itself
+    // on crée la scene par defaut et on a ajoute les effets de lumière crée ci-dessus 
     scene = new THREE.Scene();
 
     scene.add( ambientLight );
     scene.add( light );
+    
 
     // GUI
+    // on introduit une interface graphique afin de peremettre à l'utilisateur 
+    // de modifier les paramètres du cube
+    // de découper le cube
+    // de changer d'environnement de travail 
     setupGui();
 }
 
 // EVENT HANDLERS
 
 function onWindowResize() {
-
-    //var canvasWidth = window.innerWidth;
-    //var canvasHeight = window.innerHeight;
-
+    // on adapte le rendu en finction de la taille de la fenetre du navigateur 
+    // ceci permettant d'éviter des déformations de perspectives 
     renderer.setSize( canvasWidth, canvasHeight );
 
     camera.aspect = canvasWidth / canvasHeight;
     camera.updateProjectionMatrix();
 
-    render();
+    render(); // Start the rendering of the animation frames.
 
 }
 
 function setupGui() {
-
-    parametres
-
-
+    // on créer une interface graphique pour l'utilisateur 
+    // Ce GUI fait référence à une bibliothèque existante et proposée par THREE js 
     var gui = new dat.GUI();
 
     // Nombre de partitions
@@ -212,6 +230,7 @@ function setupGui() {
     creation_cubeRVB(nbre_partitions.getValue()); //on cree le cube avec n partitions et ses axes
 
 }
+
 
 function render() {
     //gestion de l'onglet "nombre des partitions"
@@ -242,7 +261,7 @@ function render() {
     creation_axe();
     scene.add(group);
     
-    renderer.render( scene, camera );
+    renderer.render( scene, camera ); // Each time we change the position of the cube object, we must re-render it.
 }
 
 
